@@ -213,6 +213,89 @@
 
   .notice svg { flex-shrink: 0; margin-top: 1px; }
 
+  .multiselect { position: relative; }
+
+  .multiselect-trigger {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 8px 14px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--black);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    transition: border-color 0.15s;
+  }
+
+  .multiselect-trigger:hover { border-color: var(--black); }
+  .multiselect.open .multiselect-trigger { border-color: var(--black); }
+
+  .multiselect-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: #fff;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    z-index: 100;
+    box-shadow: 0 4px 16px rgba(5,36,36,0.08);
+    padding: 6px 0;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .ms-group-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    padding: 8px 14px 4px;
+  }
+
+  .ms-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.1s;
+    color: var(--black);
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: 'DM Sans', sans-serif;
+    margin: 0;
+  }
+
+  .ms-option:hover { background: var(--cream); }
+
+  .ms-option input[type=checkbox] {
+    width: 15px; height: 15px;
+    accent-color: var(--black);
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+    border-radius: 3px;
+  }
+
+  .comp-tag {
+    background: var(--pink);
+    color: var(--black);
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+  }
+
   .entry {
     background: #fff;
     border: 1px solid var(--border);
@@ -392,6 +475,8 @@
         <select id="f-position">
           <option value="">— not applicable —</option>
           <option>First recommendation</option>
+          <option>Second mention</option>
+          <option>Third mention</option>
           <option>Listed among others</option>
           <option>Briefly mentioned</option>
           <option>Linked / cited</option>
@@ -400,8 +485,31 @@
     </div>
 
     <div class="field">
-      <label>Competitors mentioned (comma-separated)</label>
-      <input type="text" id="f-competitors" placeholder="e.g. Shipstation, Linnworks" />
+      <label>Competitors mentioned</label>
+      <div class="multiselect" id="comp-multiselect">
+        <div class="multiselect-trigger" id="comp-trigger" onclick="toggleDropdown()">
+          <span id="comp-placeholder" style="color:var(--muted)">Select competitors…</span>
+          <div id="comp-tags" style="display:none; flex-wrap:wrap; gap:5px; flex:1;"></div>
+          <svg width="12" height="12" viewBox="0 0 12 12" style="flex-shrink:0; opacity:0.4"><path fill="#052424" d="M6 8L1 3h10z"/></svg>
+        </div>
+        <div class="multiselect-dropdown" id="comp-dropdown" style="display:none;">
+          <div class="ms-group-label">Shipping software</div>
+          <label class="ms-option"><input type="checkbox" value="Shipstation" onchange="updateCompetitors()"> Shipstation</label>
+          <label class="ms-option"><input type="checkbox" value="Shiptheory" onchange="updateCompetitors()"> Shiptheory</label>
+          <label class="ms-option"><input type="checkbox" value="Sendcloud" onchange="updateCompetitors()"> Sendcloud</label>
+          <label class="ms-option"><input type="checkbox" value="Easyship" onchange="updateCompetitors()"> Easyship</label>
+          <label class="ms-option"><input type="checkbox" value="Veeqo" onchange="updateCompetitors()"> Veeqo</label>
+          <div class="ms-group-label">Do nothing</div>
+          <label class="ms-option"><input type="checkbox" value="Shopify built-in" onchange="updateCompetitors()"> Shopify built-in</label>
+          <label class="ms-option"><input type="checkbox" value="Royal Mail Click & Drop" onchange="updateCompetitors()"> Royal Mail Click &amp; Drop</label>
+          <div class="ms-group-label">WMS / ERP</div>
+          <label class="ms-option"><input type="checkbox" value="Mintsoft" onchange="updateCompetitors()"> Mintsoft</label>
+          <label class="ms-option"><input type="checkbox" value="Linnworks" onchange="updateCompetitors()"> Linnworks</label>
+          <label class="ms-option"><input type="checkbox" value="Brightpearl" onchange="updateCompetitors()"> Brightpearl</label>
+          <label class="ms-option"><input type="checkbox" value="Helm" onchange="updateCompetitors()"> Helm</label>
+        </div>
+      </div>
+      <input type="hidden" id="f-competitors" />
     </div>
 
     <div class="field">
@@ -475,6 +583,43 @@ function showTab(id) {
   if (id === 'summary') renderSummary();
 }
 
+function toggleDropdown() {
+  const ms = document.getElementById('comp-multiselect');
+  const dd = document.getElementById('comp-dropdown');
+  const isOpen = ms.classList.contains('open');
+  if (isOpen) { ms.classList.remove('open'); dd.style.display = 'none'; }
+  else { ms.classList.add('open'); dd.style.display = 'block'; }
+}
+
+function updateCompetitors() {
+  const checked = [...document.querySelectorAll('#comp-dropdown input:checked')].map(c => c.value);
+  document.getElementById('f-competitors').value = checked.join(', ');
+  const placeholder = document.getElementById('comp-placeholder');
+  const tags = document.getElementById('comp-tags');
+  if (checked.length === 0) {
+    placeholder.style.display = 'inline';
+    tags.style.display = 'none';
+    tags.innerHTML = '';
+  } else {
+    placeholder.style.display = 'none';
+    tags.style.display = 'flex';
+    tags.innerHTML = checked.map(c => `<span class="comp-tag">${c}</span>`).join('');
+  }
+}
+
+function resetCompetitors() {
+  document.querySelectorAll('#comp-dropdown input').forEach(c => c.checked = false);
+  updateCompetitors();
+}
+
+document.addEventListener('click', e => {
+  const ms = document.getElementById('comp-multiselect');
+  if (!ms.contains(e.target)) {
+    ms.classList.remove('open');
+    document.getElementById('comp-dropdown').style.display = 'none';
+  }
+});
+
 function buildChips() {
   const c = document.getElementById('promptChips');
   PROMPTS.forEach(p => {
@@ -516,9 +661,10 @@ async function saveEntry() {
     });
 
     sessionEntries.unshift(entry);
-    ['f-prompt','f-competitors','f-quote','f-notes'].forEach(id => document.getElementById(id).value = '');
+    ['f-prompt','f-quote','f-notes'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('f-mentioned').value = 'Yes — mentioned';
     document.getElementById('f-position').value = '';
+    resetCompetitors();
 
     msg.textContent = 'Saved to sheet.';
     msg.className = 'status status-ok';
