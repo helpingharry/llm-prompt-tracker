@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zenstores — LLM Visibility Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #052424;
+    --pink: #FFBEAF;
+    --cream: #FFF8F7;
+    --green: #37BE78;
+    --red: #F5503C;
+    --blue: #283CFF;
+    --border: rgba(5,36,36,0.12);
+    --border-strong: rgba(5,36,36,0.25);
+    --muted: rgba(5,36,36,0.45);
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--black);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  header {
+    background: var(--black);
+    color: var(--cream);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--pink);
+  }
+
+  .header-title {
+    font-size: 13px;
+    color: rgba(255,248,247,0.5);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1.5px solid var(--border-strong);
+    margin-bottom: 2rem;
+  }
+
+  .tab {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1.5px;
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s;
+  }
+
+  .tab:hover { color: var(--black); }
+  .tab.active { color: var(--black); border-bottom-color: var(--black); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .field { margin-bottom: 1.125rem; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: 'DM Mono', monospace;
+  }
+
+  input[type=text], select, textarea {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--black);
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input[type=text]:focus, select:focus, textarea:focus {
+    border-color: var(--black);
+  }
+
+  textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23052424' opacity='.4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+  }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+
+  .btn {
+    background: var(--black);
+    color: var(--cream);
+    border: none;
+    padding: 11px 24px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: opacity 0.15s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .status {
+    display: inline-block;
+    font-size: 13px;
+    margin-left: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+  .status-ok { color: var(--green); }
+  .status-err { color: var(--red); }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 1.5rem;
+  }
+
+  .chip {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-strong);
+    background: #fff;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .chip:hover {
+    border-color: var(--black);
+    color: var(--black);
+    background: var(--pink);
+  }
+
+  .notice {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .notice svg { flex-shrink: 0; margin-top: 1px; }
+
+  .entry {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.125rem 1.25rem;
+    margin-bottom: 10px;
+  }
+
+  .entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .entry-prompt {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--black);
+    flex: 1;
+    line-height: 1.4;
+  }
+
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; flex-shrink: 0; }
+
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .badge-llm { background: var(--cream); color: var(--muted); border: 1px solid var(--border-strong); }
+  .badge-yes { background: #d4f5e2; color: #186940; }
+  .badge-no { background: #fde8e6; color: #b33225; }
+  .badge-comp { background: #fff3dd; color: #8a5c00; }
+
+  .detail {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    margin-top: 5px;
+    align-items: flex-start;
+  }
+
+  .detail-key {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 85px;
+    padding-top: 1px;
+    font-family: 'DM Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .detail-val { color: var(--black); }
+
+  .entry-date { font-size: 11px; color: var(--muted); margin-top: 10px; font-family: 'DM Mono', monospace; }
+
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-bar label { margin: 0; text-transform: none; font-size: 13px; letter-spacing: 0; }
+  .filter-bar select { width: auto; font-size: 13px; padding: 7px 32px 7px 10px; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 2rem;
+  }
+
+  @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+
+  .stat {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.125rem 1.25rem;
+  }
+
+  .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-val { font-size: 32px; font-weight: 600; color: var(--black); line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+  .llm-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2rem; }
+
+  .llm-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.875rem 1rem;
+    flex: 1;
+    min-width: 130px;
+  }
+
+  .llm-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .llm-meta { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  .comp-list { display: flex; flex-wrap: wrap; gap: 7px; }
+
+  .empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">Zenstores</span>
+  <span class="header-title">LLM Visibility Tracker</span>
+</header>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('log')">Log a check</button>
+    <button class="tab" onclick="showTab('history')">History</button>
+    <button class="tab" onclick="showTab('summary')">Summary</button>
+  </div>
+
+  <div id="panel-log" class="panel active">
+    <div class="notice">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="6.5" stroke="#052424" stroke-opacity=".35"/><rect x="6.5" y="5.5" width="1" height="5" rx=".5" fill="#052424" fill-opacity=".45"/><rect x="6.5" y="3.5" width="1" height="1" rx=".5" fill="#052424" fill-opacity=".45"/></svg>
+      Entries save directly to your shared Google Sheet. Click a prompt chip to pre-fill.
+    </div>
+
+    <p class="section-label">Suggested prompts</p>
+    <div class="chips" id="promptChips"></div>
+
+    <div class="field">
+      <label>Prompt used</label>
+      <textarea id="f-prompt" placeholder="e.g. What's the best shipping software for UK ecommerce brands?"></textarea>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>LLM / AI tool</label>
+        <select id="f-llm">
+          <option>ChatGPT</option>
+          <option>Claude</option>
+          <option>Perplexity</option>
+          <option>Gemini</option>
+          <option>Copilot</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Date checked</label>
+        <input type="text" id="f-date" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Zenstores mentioned?</label>
+        <select id="f-mentioned">
+          <option>Yes — mentioned</option>
+          <option>No — not mentioned</option>
+          <option>No — competitor instead</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Position / prominence</label>
+        <select id="f-position">
+          <option value="">— not applicable —</option>
+          <option>First recommendation</option>
+          <option>Listed among others</option>
+          <option>Briefly mentioned</option>
+          <option>Linked / cited</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Competitors mentioned (comma-separated)</label>
+      <input type="text" id="f-competitors" placeholder="e.g. Shipstation, Linnworks" />
+    </div>
+
+    <div class="field">
+      <label>Key quote or summary from response</label>
+      <textarea id="f-quote" placeholder="Paste a key snippet or paraphrase the response…"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Notes</label>
+      <input type="text" id="f-notes" placeholder="Anything worth flagging — phrasing, framing, gaps…" />
+    </div>
+
+    <button class="btn" id="saveBtn" onclick="saveEntry()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7.5L5.5 11L12 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Save to sheet
+    </button>
+    <span id="save-msg" class="status" style="display:none"></span>
+  </div>
+
+  <div id="panel-history" class="panel">
+    <div class="filter-bar">
+      <label style="color:var(--muted)">Filter:</label>
+      <select id="filter-llm" onchange="renderHistory()">
+        <option value="">All LLMs</option>
+        <option>ChatGPT</option><option>Claude</option>
+        <option>Perplexity</option><option>Gemini</option><option>Copilot</option>
+      </select>
+      <select id="filter-mentioned" onchange="renderHistory()">
+        <option value="">All results</option>
+        <option value="Yes — mentioned">Mentioned</option>
+        <option value="No — not mentioned">Not mentioned</option>
+        <option value="No — competitor instead">Competitor instead</option>
+      </select>
+    </div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:1.25rem;">Showing entries from this session. Full history is in your Google Sheet.</p>
+    <div id="history-list"></div>
+  </div>
+
+  <div id="panel-summary" class="panel">
+    <p style="font-size:13px; color:var(--muted); margin-bottom:1.5rem;">Based on entries logged this session. For full trends, open your Google Sheet.</p>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div id="breakdown"></div>
+  </div>
+
+</div>
+
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzP9dFFpFyPONRm1-cfWuBgxoFTLC9ZSAPN3BqB1tlMmyzJ-jooNk2Yp1XYeXWeQWzt9Q/exec";
+
+const PROMPTS = [
+  "Best shipping software for UK ecommerce?",
+  "How do I automate shipping for my Shopify store UK?",
+  "Shipping software for 200 orders a day UK",
+  "Alternatives to Royal Mail Click & Drop",
+  "Best way to manage orders across multiple sales channels UK",
+  "Shipping label software for UK small business",
+  "How do I reduce shipping costs for my UK ecommerce brand?",
+  "Best Shipstation alternative UK",
+  "Order management software for UK ecommerce",
+  "How to scale ecommerce fulfilment UK"
+];
+
+let sessionEntries = [];
+
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[onclick="showTab('${id}')"]`).classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+  if (id === 'history') renderHistory();
+  if (id === 'summary') renderSummary();
+}
+
+function buildChips() {
+  const c = document.getElementById('promptChips');
+  PROMPTS.forEach(p => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = p;
+    chip.onclick = () => { document.getElementById('f-prompt').value = p; };
+    c.appendChild(chip);
+  });
+}
+
+async function saveEntry() {
+  const prompt = document.getElementById('f-prompt').value.trim();
+  if (!prompt) { alert('Please enter a prompt.'); return; }
+
+  const entry = {
+    date: document.getElementById('f-date').value,
+    prompt,
+    llm: document.getElementById('f-llm').value,
+    mentioned: document.getElementById('f-mentioned').value,
+    position: document.getElementById('f-position').value,
+    competitors: document.getElementById('f-competitors').value,
+    quote: document.getElementById('f-quote').value,
+    notes: document.getElementById('f-notes').value
+  };
+
+  const btn = document.getElementById('saveBtn');
+  const msg = document.getElementById('save-msg');
+  btn.disabled = true;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"><animateTransform attributeName="transform" type="rotate" from="0 7 7" to="360 7 7" dur="0.8s" repeatCount="indefinite"/></circle></svg> Saving…';
+  msg.style.display = 'none';
+
+  try {
+    await fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    });
+
+    sessionEntries.unshift(entry);
+    ['f-prompt','f-competitors','f-quote','f-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-mentioned').value = 'Yes — mentioned';
+    document.getElementById('f-position').value = '';
+
+    msg.textContent = 'Saved to sheet.';
+    msg.className = 'status status-ok';
+    msg.style.display = 'inline';
+  } catch(err) {
+    msg.textContent = 'Error — check sheet URL.';
+    msg.className = 'status status-err';
+    msg.style.display = 'inline';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7.5L5.5 11L12 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Save to sheet';
+  setTimeout(() => msg.style.display = 'none', 3000);
+}
+
+function badgeMentioned(val) {
+  if (val === 'Yes — mentioned') return `<span class="badge badge-yes">Mentioned</span>`;
+  if (val === 'No — not mentioned') return `<span class="badge badge-no">Not mentioned</span>`;
+  return `<span class="badge badge-comp">Competitor instead</span>`;
+}
+
+function renderHistory() {
+  const fl = document.getElementById('filter-llm').value;
+  const fm = document.getElementById('filter-mentioned').value;
+  const list = document.getElementById('history-list');
+  const filtered = sessionEntries.filter(e => (!fl || e.llm === fl) && (!fm || e.mentioned === fm));
+  if (!filtered.length) { list.innerHTML = '<div class="empty">No entries logged this session yet.</div>'; return; }
+  list.innerHTML = filtered.map(e => `
+    <div class="entry">
+      <div class="entry-header">
+        <span class="entry-prompt">${e.prompt}</span>
+        <div class="badges">
+          <span class="badge badge-llm">${e.llm}</span>
+          ${badgeMentioned(e.mentioned)}
+        </div>
+      </div>
+      ${e.position ? `<div class="detail"><span class="detail-key">Position</span><span class="detail-val">${e.position}</span></div>` : ''}
+      ${e.competitors ? `<div class="detail"><span class="detail-key">Competitors</span><span class="detail-val">${e.competitors}</span></div>` : ''}
+      ${e.quote ? `<div class="detail"><span class="detail-key">Quote</span><span class="detail-val">${e.quote}</span></div>` : ''}
+      ${e.notes ? `<div class="detail"><span class="detail-key">Notes</span><span class="detail-val">${e.notes}</span></div>` : ''}
+      <div class="entry-date">${e.date}</div>
+    </div>`).join('');
+}
+
+function renderSummary() {
+  const total = sessionEntries.length;
+  const mentioned = sessionEntries.filter(e => e.mentioned === 'Yes — mentioned').length;
+  const rate = total ? Math.round((mentioned / total) * 100) : 0;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat"><div class="stat-label">Checks</div><div class="stat-val">${total}</div><div class="stat-sub">this session</div></div>
+    <div class="stat"><div class="stat-label">Mentioned</div><div class="stat-val">${mentioned}</div><div class="stat-sub">times</div></div>
+    <div class="stat"><div class="stat-label">Mention rate</div><div class="stat-val">${rate}%</div><div class="stat-sub">of checks</div></div>
+  `;
+
+  const llmCounts = {};
+  sessionEntries.forEach(e => { llmCounts[e.llm] = (llmCounts[e.llm] || 0) + 1; });
+
+  const compCounts = {};
+  sessionEntries.forEach(e => {
+    if (e.competitors) e.competitors.split(',').map(c => c.trim()).filter(Boolean).forEach(c => {
+      compCounts[c] = (compCounts[c] || 0) + 1;
+    });
+  });
+
+  let html = '';
+
+  if (Object.keys(llmCounts).length) {
+    html += '<p class="section-label" style="margin-bottom:10px">By LLM</p><div class="llm-grid">';
+    Object.entries(llmCounts).sort((a,b) => b[1]-a[1]).forEach(([llm, n]) => {
+      const m = sessionEntries.filter(e => e.llm === llm && e.mentioned === 'Yes — mentioned').length;
+      html += `<div class="llm-card"><div class="llm-name">${llm}</div><div class="llm-meta">${n} check${n>1?'s':''} · ${Math.round((m/n)*100)}% mentioned</div></div>`;
+    });
+    html += '</div>';
+  }
+
+  if (Object.keys(compCounts).length) {
+    html += '<hr><p class="section-label" style="margin-bottom:10px">Competitors appearing</p><div class="comp-list">';
+    Object.entries(compCounts).sort((a,b) => b[1]-a[1]).forEach(([comp, n]) => {
+      html += `<span class="badge badge-comp" style="font-size:12px; padding:5px 12px;">${comp} <span style="opacity:0.6">(${n})</span></span>`;
+    });
+    html += '</div>';
+  }
+
+  if (!total) html = '<div class="empty">No data yet this session. Full history lives in your Google Sheet.</div>';
+  document.getElementById('breakdown').innerHTML = html;
+}
+
+buildChips();
+document.getElementById('f-date').value = new Date().toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+</script>
+</body>
+</html>
